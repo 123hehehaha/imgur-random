@@ -71,10 +71,11 @@
             line-height: 0;
         }
         img { 
-            margin: 0; 
+            margin: 5px;
             padding: 0;
-            max-width: 200px; 
-            max-height: 200px; 
+            max-width: 100%;
+            height: auto;
+            max-height: 200px; /* Smaller image size */
             object-fit: cover;
             border-radius: 0;
             border: none;
@@ -95,12 +96,6 @@
             border-radius: 3px;
             border: 1px solid #ccc;
         }
-        .format-options {
-            margin: 10px 0;
-        }
-        .format-options label {
-            margin-right: 10px;
-        }
         .filter-options {
             margin: 10px 0;
         }
@@ -111,14 +106,11 @@
 </head>
 <body>
     <div class="controls">
-        <label for="charCount">Number of characters in URL:</label>
+        <label for="charCount">url length (5-7)</label>
         <input type="number" id="charCount" value="5" min="5" max="7">
+        <label for="numImages">image count</label>
+        <input type="number" id="numImages" value="50" min="1" max="50">
         <button id="generateBtn" class="win7-btn" onclick="generateImages()">Generate Images</button>
-    </div>
-    <div class="format-options">
-        <label><input type="checkbox" id="formatJpg" checked> JPG</label>
-        <label><input type="checkbox" id="formatPng" checked> PNG</label>
-        <label><input type="checkbox" id="formatGif" checked> GIF</label>
     </div>
     <div class="filter-options">
         <label><input type="checkbox" id="blockMinecraftSkins" checked> block 64 x 64 icons</label>
@@ -133,43 +125,38 @@
         let maxImages = 50;
         let attemptLimit = 1000;
         let usedUrls = new Set();
-        
+
         function generateRandomString(length) {
             const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
         }
-        
+
         function hasExtremeRatio(width, height) {
             const aspectRatio = Math.max(width, height) / Math.min(width, height);
             const extremeRatioThreshold = 5.0;
             return aspectRatio > extremeRatioThreshold;
         }
-        
+
         function isBannerSize(width, height) {
-            // Common banner sizes (width significantly larger than height)
             const bannerRatio = width / height;
-            return bannerRatio > 3.0 && width > 468; // typical banner ratios
+            return bannerRatio > 3.0 && width > 468;
         }
-        
+
         function isMinecraftSkin(width, height) {
             return width === 64 && height === 64;
         }
-        
+
         function checkImage(imgUrl) {
             return new Promise((resolve) => {
-                // Skip already used URLs
                 if (usedUrls.has(imgUrl)) {
                     resolve({ valid: false, url: imgUrl });
                     return;
                 }
-                
                 const img = new Image();
                 let resolved = false;
-                
                 img.onload = () => {
                     if (resolved) return;
                     resolved = true;
-                    
                     const width = Math.round(img.width);
                     const height = Math.round(img.height);
                     const blockMinecraftSkins = document.getElementById('blockMinecraftSkins').checked;
@@ -177,12 +164,10 @@
 
                     if ((width === 161 && height === 81) || 
                         (blockMinecraftSkins && isMinecraftSkin(width, height)) || 
-                        (width === 203 && height === 174) || 
-                        (width === 298 && height === 256) || 
                         (blockBanners && isBannerSize(width, height)) ||
                         width < 65 || 
                         height < 65 ||
-                        hasExtremeRatio(width, height)) {
+                        (width === 298 && height === 256)) { 
                         resolve({ valid: false, url: imgUrl });
                     } else {
                         usedUrls.add(imgUrl);
@@ -205,7 +190,7 @@
                 img.src = imgUrl;
             });
         }
-        
+
         function updateStatus() {
             const statusElement = document.getElementById('status');
             if (isGenerating) {
@@ -214,35 +199,7 @@
                 statusElement.textContent = `Found ${foundImages} images after ${attempts} attempts.`;
             }
         }
-        
-        function getSelectedFormats() {
-            const formats = [];
-            if (document.getElementById('formatJpg').checked) formats.push('jpg');
-            if (document.getElementById('formatPng').checked) formats.push('png');
-            if (document.getElementById('formatGif').checked) formats.push('gif');
-            return formats.length > 0 ? formats : ['jpg', 'png', 'gif'];
-        }
-        
-        document.getElementById('blockMinecraftSkins').addEventListener('change', function() {
-            if (!isGenerating) generateImages();
-        });
-        
-        document.getElementById('blockBanners').addEventListener('change', function() {
-            if (!isGenerating) generateImages();
-        });
-        
-        document.getElementById('formatJpg').addEventListener('change', function() {
-            if (!isGenerating) generateImages();
-        });
-        
-        document.getElementById('formatPng').addEventListener('change', function() {
-            if (!isGenerating) generateImages();
-        });
-        
-        document.getElementById('formatGif').addEventListener('change', function() {
-            if (!isGenerating) generateImages();
-        });
-        
+
         async function generateImages() {
             if (isGenerating) return;
             
@@ -255,13 +212,14 @@
             container.innerHTML = '';
             const charCount = Math.max(5, Math.min(7, parseInt(document.getElementById('charCount').value) || 5));
             document.getElementById('charCount').value = charCount;
+            const numImages = Math.max(1, Math.min(50, parseInt(document.getElementById('numImages').value) || 50));
+            maxImages = numImages;
             
             const generateBtn = document.getElementById('generateBtn');
             generateBtn.textContent = 'Generating...';
             generateBtn.disabled = true;
             
             const statusInterval = setInterval(updateStatus, 200);
-            const selectedFormats = getSelectedFormats();
             
             async function tryGenerate() {
                 if (foundImages >= maxImages || attempts >= attemptLimit) {
@@ -270,8 +228,7 @@
                 
                 attempts++;
                 const imgurId = generateRandomString(charCount);
-                const randomFormat = selectedFormats[Math.floor(Math.random() * selectedFormats.length)];
-                const imgUrl = `https://i.imgur.com/${imgurId}.${randomFormat}`;
+                const imgUrl = `https://i.imgur.com/${imgurId}.jpg`; // Removing format filtering
                 
                 try {
                     const result = await checkImage(imgUrl);
